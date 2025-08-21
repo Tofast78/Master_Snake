@@ -1,58 +1,140 @@
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Service Snake</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Service Snake</h1>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-  <canvas id="gameCanvas"></canvas>
+const gridCount = 10;
+let gridSize;
 
-  <div id="controls">
-    <button id="up">↑</button>
-    <button id="left">←</button>
-    <button id="down">↓</button>
-    <button id="right">→</button>
-  </div>
+function resizeCanvas() {
+  const size = Math.min(window.innerWidth*0.9, 400);
+  canvas.width = size;
+  canvas.height = size;
+  gridSize = canvas.width / gridCount;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-  <div id="info">
-    <p id="score">Pontuação: 0</p>
-    <p id="highscore">Recorde: 0</p>
-    <p>Use Cursor or Touch to Play.</p>
-  </div>
+// 🔹 LISTA DE IMAGENS (mude para o caminho do seu GitHub)
+const headImgs = [
+  "https://github.com/Tofast78/Master_Snake/blob/a082f7b7a243c2f1c6c6c49f1c06b22f06cdd646/head1.PNG",
+  "https://github.com/Tofast78/Master_Snake/blob/a082f7b7a243c2f1c6c6c49f1c06b22f06cdd646/head2.PNG"
+];
+const foodImgs = [
+  "https://github.com/Tofast78/Master_Snake/blob/a082f7b7a243c2f1c6c6c49f1c06b22f06cdd646/food1.PNG",
+  "https://github.com/Tofast78/Master_Snake/blob/a082f7b7a243c2f1c6c6c49f1c06b22f06cdd646/food2.PNG,
+  "https://github.com/Tofast78/Master_Snake/blob/a082f7b7a243c2f1c6c6c49f1c06b22f06cdd646/food3.PNG"
+];
 
-  <script src="script.js"></script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Service Snake</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Service Snake</h1>
+// 🔹 Carregar imagens em objetos prontos
+function loadImages(urls) {
+  return urls.map(src => {
+    let img = new Image();
+    img.src = src;
+    return img;
+  });
+}
+const heads = loadImages(headImgs);
+const foods = loadImages(foodImgs);
 
-  <canvas id="gameCanvas"></canvas>
+// 🔹 Começa com uma cabeça aleatória
+let snake = [{x:5, y:5}];
+let snakeDir = {x:0, y:0};
+let headImg = heads[Math.floor(Math.random()*heads.length)];
 
-  <div id="controls">
-    <button id="up">↑</button>
-    <button id="left">←</button>
-    <button id="down">↓</button>
-    <button id="right">→</button>
-  </div>
+// 🔹 Escolhe uma comida aleatória
+let food = {x:2, y:2, img: foods[Math.floor(Math.random()*foods.length)]};
+let score = 0;
 
-  <div id="info">
-    <p id="score">Pontuação: 0</p>
-    <p id="highscore">Recorde: 0</p>
-    <p>Use Cursor or Touch to Play.</p>
-  </div>
+// 🔹 High Score
+let highScore = localStorage.getItem("snakeHighScore") 
+                ? parseInt(localStorage.getItem("snakeHighScore")) 
+                : 0;
+document.getElementById("highscore").textContent = "Recorde: " + highScore;
 
-  <script src="script.js"></script>
-</body>
-</html>
+function placeFood() {
+  let x, y;
+  do {
+    x = Math.floor(Math.random() * gridCount);
+    y = Math.floor(Math.random() * gridCount);
+  } while (snake.some(s => s.x === x && s.y === y));
+  food = {x, y, img: foods[Math.floor(Math.random()*foods.length)]}; // aleatório
+}
+
+function update() {
+  if (snakeDir.x === 0 && snakeDir.y === 0) { draw(); return; }
+
+  let head = {x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y};
+  head.x = (head.x + gridCount) % gridCount;
+  head.y = (head.y + gridCount) % gridCount;
+
+  if (snake.some(s => s.x === head.x && s.y === head.y)) { resetGame(); return; }
+
+  snake.unshift(head);
+
+  if (head.x === food.x && head.y === food.y) {
+    score++; 
+    document.getElementById("score").textContent = "Pontuação: " + score;
+
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("snakeHighScore", highScore);
+      document.getElementById("highscore").textContent = "Recorde: " + highScore;
+    }
+
+    // 🔹 cada vez que come -> escolhe nova comida
+    placeFood();
+
+    // 🔹 chance de mudar a cabeça também
+    if (Math.random() < 0.3) { // 30% de chance
+      headImg = heads[Math.floor(Math.random()*heads.length)];
+    }
+  } else {
+    snake.pop();
+  }
+
+  draw();
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // desenha comida
+  ctx.drawImage(food.img, food.x*gridSize, food.y*gridSize, gridSize, gridSize);
+
+  // corpo da cobra
+  for (let i=1; i<snake.length; i++) {
+    let seg = snake[i];
+    ctx.fillStyle = "#00ff99";
+    ctx.fillRect(seg.x*gridSize, seg.y*gridSize, gridSize, gridSize);
+  }
+
+  // cabeça da cobra
+  ctx.drawImage(headImg, snake[0].x*gridSize, snake[0].y*gridSize, gridSize, gridSize);
+}
+
+function resetGame() {
+  snake = [{x:5, y:5}];
+  snakeDir = {x:0, y:0};
+  score = 0; 
+  document.getElementById("score").textContent = "Pontuação: " + score;
+  headImg = heads[Math.floor(Math.random()*heads.length)]; // 🔹 nova cabeça no reset
+  placeFood();
+}
+
+// Controles teclado
+window.addEventListener('keydown', e => {
+  switch(e.key) {
+    case 'ArrowUp': if(snakeDir.y!==1) snakeDir={x:0,y:-1}; break;
+    case 'ArrowDown': if(snakeDir.y!==-1) snakeDir={x:0,y:1}; break;
+    case 'ArrowLeft': if(snakeDir.x!==1) snakeDir={x:-1,y:0}; break;
+    case 'ArrowRight': if(snakeDir.x!==-1) snakeDir={x:1,y:0}; break;
+  }
+});
+
+// Controles botões
+document.getElementById('up').addEventListener('click', () => { if(snakeDir.y!==1) snakeDir={x:0,y:-1}; });
+document.getElementById('down').addEventListener('click', () => { if(snakeDir.y!==-1) snakeDir={x:0,y:1}; });
+document.getElementById('left').addEventListener('click', () => { if(snakeDir.x!==1) snakeDir={x:-1,y:0}; });
+document.getElementById('right').addEventListener('click', () => { if(snakeDir.x!==-1) snakeDir={x:1,y:0}; });
+
+resetGame();
+setInterval(update, 200);
